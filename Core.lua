@@ -75,6 +75,24 @@ function Roids.FindDelimeter(word)
     return delimeter, which;
 end
 
+
+Roids.UnitMap = {
+    t = "target",
+    tt = "targettarget",
+    p = "player",
+    mover = "mouseover",
+    m = "mouseover",
+    p1 = "party1",
+    p2 = "party2",
+    p3 = "party3",
+    p4 = "party4",
+    pp1 = "partypet1",
+    pp2 = "partypet2",
+    pp3 = "partypet3",
+    pp4 = "partypet4",
+    f = "focus",
+}
+
 -- Parses the given message and looks for any conditionals
 -- msg: The message to parse
 -- returns: A set of conditionals found inside the given string
@@ -115,10 +133,22 @@ function Roids.parseMsg(msg)
             end
         -- @target
         elseif string.sub(w, 1, 1) == "@" then
-            conditionals["target"] = string.sub(w,  2);
+            local key = string.sub(w,  2);
+            local unit = Roids.UnitMap[key];
+            if unit ~= nil and unit ~= '' then
+                conditionals["target"] = unit;
+            else
+                conditionals["target"] = key;
+            end
         -- Any other keyword like harm or help
         elseif Roids.Keywords[w] ~= nil then
-            conditionals[w] = 1;
+            if w == 'a' then
+                conditionals["harm"] = 1;
+            elseif w == 'h' then
+                conditionals["help"] = 1;
+            else 
+                conditionals[w] = 1;
+            end
         end
     end
     
