@@ -40,6 +40,19 @@ function Roids.IsValidTarget(target, help)
 	return Roids.CheckHelp(target, help);
 end
 
+function Roids.Visible(target)
+    if target ~= "mouseover" then
+		if not UnitIsVisible(target) or not UnitExists(target) or not CheckInteractDistance(target, 4) then
+			return false;
+		end
+		return true;
+	end
+	
+	if (not Roids.mouseoverUnit) and not UnitName("mouseover") then
+		return false;
+	end
+end
+
 -- Returns the current shapeshift / stance index
 -- returns: The index of the current shapeshift form / stance. 0 if in no shapeshift form / stance
 function Roids.GetCurrentShapeshiftIndex()
@@ -113,6 +126,7 @@ function Roids.HasBuff(textureName)
     
     return false;
 end
+
 
 -- Maps easy to use weapon type names (e.g. Axes, Shields) to their inventory slot name and their localized tooltip name
 Roids.WeaponTypeNames = {
@@ -249,12 +263,91 @@ end
 -- amount: The required amount
 -- returns: True or false
 function Roids.ValidateHp(unit, bigger, amount)
+    if not UnitIsVisible(unit) or not UnitExists(unit) then
+        return false;
+    end
+
     local powerPercent = 100 / UnitHealthMax(unit) * UnitHealth(unit);
     if bigger == 0 then
         return powerPercent < tonumber(amount);
     end
-    
     return powerPercent > tonumber(amount);
+end
+
+-- Checks whether or not the given unit has more or less hp in percent than the given amount
+-- unit: The unit we're checking
+-- bigger: 1 if the percentage needs to be bigger, 0 if it needs to be lower
+-- amount: The required amount
+-- returns: True or false
+function Roids.ValidateCurrentHp(unit, bigger, amount)
+    if not UnitIsVisible(unit) or not UnitExists(unit) then
+        return false;
+    end
+
+    local health = UnitHealth(unit);
+    if bigger == 0 then
+        return health < tonumber(amount);
+    end
+    return health > tonumber(amount);
+end
+
+-- Checks whether or not the given unit has more or less hp in percent than the given amount
+-- unit: The unit we're checking
+-- bigger: 1 if the percentage needs to be bigger, 0 if it needs to be lower
+-- amount: The required amount
+-- returns: True or false
+function Roids.ValidateMissingHp(unit, bigger, amount)
+    if not UnitIsVisible(unit) or not UnitExists(unit) then
+        return false;
+    end
+
+    local health = UnitHealth(unit);
+    local total = UnitHealthMax(unit);
+    local missing = total - health;
+    if bigger == 0 then
+        return missing < tonumber(amount);
+    end
+    return missing > tonumber(amount);
+end
+
+
+-- Checks whether or not the given unit has more or less hp in percent than the given amount
+-- unit: The unit we're checking
+-- bigger: 1 if the percentage needs to be bigger, 0 if it needs to be lower
+-- amount: The required amount
+-- returns: True or false
+function Roids.ValidateTotalHp(unit, bigger, amount)
+    if not UnitIsVisible(unit) or not UnitExists(unit) then
+        return false;
+    end
+
+    local health = UnitHealthMax(unit);
+    if bigger == 0 then
+        return health < tonumber(amount);
+    end
+    
+    return health > tonumber(amount);
+end
+
+-- Checks whether or not the given unit has more or less hp in percent than the given amount
+-- unit: The unit we're checking
+-- bigger: 1 if the percentage needs to be bigger, 0 if it needs to be lower
+-- amount: The required amount
+-- returns: True or false
+function Roids.ValidateTotalHpRatio(unit, bigger, amount)
+    if not UnitIsVisible(unit) or not UnitExists(unit) then
+        return false;
+    end
+
+    local myhealth = UnitHealthMax('player');
+    local health = UnitHealthMax(unit);
+
+    local ourRatio = 100 / myhealth * health;
+    if bigger == 0 then
+        return ourRatio < tonumber(amount);
+    end
+    
+    return ourRatio > tonumber(amount);
 end
 
 -- Checks whether the given creatureType is the same as the target's creature type
@@ -345,6 +438,14 @@ Roids.Keywords = {
     harm = function(conditionals)
         return true;
     end,
+
+    a = function (conditionals)
+        return true;
+    end,
+
+    h = function (conditionals)
+        return true;
+    end,
     
     stance = function(conditionals)
         local inStance = false;
@@ -433,76 +534,96 @@ Roids.Keywords = {
         return Roids.CheckChanneled(conditionals);
     end,
     
-    buff = function(conditionals)
-        return Roids.HasBuffName(conditionals.buff, conditionals.target);
+    bf = function(conditionals)
+        return Roids.HasBuffName(conditionals.bf, conditionals.target);
     end,
     
-    nobuff = function(conditionals)
-        return not Roids.HasBuffName(conditionals.nobuff, conditionals.target);
+    nbf = function(conditionals)
+        return not Roids.HasBuffName(conditionals.nbf, conditionals.target);
     end,
     
-    debuff = function(conditionals)
-        return Roids.HasDeBuffName(conditionals.debuff, conditionals.target);
+    dbf = function(conditionals)
+        return Roids.HasDeBuffName(conditionals.dbf, conditionals.target);
     end,
     
-    nodebuff = function(conditionals)
-        return not Roids.HasDeBuffName(conditionals.nodebuff, conditionals.target);
+    ndbf = function(conditionals)
+        return not Roids.HasDeBuffName(conditionals.ndbf, conditionals.target);
     end,
     
-    mybuff = function(conditionals)
-        return Roids.HasBuffName(conditionals.mybuff, "player");
+    mybf = function(conditionals)
+        return Roids.HasBuffName(conditionals.mybf, "player");
     end,
     
-    nomybuff = function(conditionals)
-        return not Roids.HasBuffName(conditionals.nomybuff, "player");
+    mynbf = function(conditionals)
+        return not Roids.HasBuffName(conditionals.mynbf, "player");
     end,
     
-    mydebuff = function(conditionals)
-        return Roids.HasDeBuffName(conditionals.mydebuff, "player");
+    mydbf = function(conditionals)
+        return Roids.HasDeBufName(conditionals.mydbf, "player");
     end,
     
-    nomydebuff = function(conditionals)
-        return not Roids.HasDeBuffName(conditionals.nomydebuff, "player");
+    myndbf = function(conditionals)
+        return not Roids.HasDeBuffName(conditionals.myndbf, "player");
     end,
     
-    power = function(conditionals)
-        return Roids.ValidatePower(conditionals.target, conditionals.power.bigger, conditionals.power.amount);
+    pw = function(conditionals)
+        return Roids.ValidatePower(conditionals.target, conditionals.pw.bigger, conditionals.pw.amount);
     end,
     
-    mypower = function(conditionals)
-        return Roids.ValidatePower("player", conditionals.mypower.bigger, conditionals.mypower.amount);
+    mypw = function(conditionals)
+        return Roids.ValidatePower("player", conditionals.mypw.bigger, conditionals.mypw.amount);
     end,
     
-    rawpower = function(conditionals)
-        return Roids.ValidateRawPower(conditionals.target, conditionals.rawpower.bigger, conditionals.rawpower.amount);
+    cpw = function(conditionals)
+        return Roids.ValidateRawPower(conditionals.target, conditionals.cpw.bigger, conditionals.cpw.amount);
     end,
     
-    myrawpower = function(conditionals)
-        return Roids.ValidateRawPower("player", conditionals.myrawpower.bigger, conditionals.myrawpower.amount);
+    mycpw = function(conditionals)
+        return Roids.ValidateRawPower("player", conditionals.mycpw.bigger, conditionals.mycpw.amount);
     end,
     
     hp = function(conditionals)
         return Roids.ValidateHp(conditionals.target, conditionals.hp.bigger, conditionals.hp.amount);
+    end,
+
+    hpt = function(conditionals)
+        return Roids.ValidateTotalHp(conditionals.target, conditionals.hpt.bigger, conditionals.hpt.amount);
+    end,
+
+    hpc = function(conditionals)
+        return Roids.ValidateCurrentHp(conditionals.target, conditionals.hpc.bigger, conditionals.hpc.amount);
+    end,
+
+    hpm = function(conditionals)
+        return Roids.ValidateMissingHp(conditionals.target, conditionals.hpm.bigger, conditionals.hpm.amount);
+    end,
+
+    hpr = function(conditionals)
+        return Roids.ValidateTotalHpRatio(conditionals.target, conditionals.hpr.bigger, conditionals.hpr.amount);
     end,
     
     myhp = function(conditionals)
         return Roids.ValidateHp("player", conditionals.myhp.bigger, conditionals.myhp.amount);
     end,
     
-    type = function(conditionals)
-        return Roids.ValidateCreatureType(conditionals.type, conditionals.target);
+    t = function(conditionals)
+        return Roids.ValidateCreatureType(conditionals.t, conditionals.target);
+    end,
+
+    v = function(conditionals)
+        return Roids.Visible(conditionals.target)
     end,
     
-    cooldown = function(conditionals)
-        local name = string.gsub(conditionals.cooldown, "_", " ");
+    cd = function(conditionals)
+        local name = string.gsub(conditionals.cd, "_", " ");
         local cd = Roids.GetSpellCooldownByName(name);
         if not cd then cd = Roids.GetInventoryCooldownByName(name); end
         if not cd then cd = Roids.GetContainerItemCooldownByName(name) end
         return cd > 0;
     end,
     
-    nocooldown = function(conditionals)
-        local name = string.gsub(conditionals.nocooldown, "_", " ");
+    nocd = function(conditionals)
+        local name = string.gsub(conditionals.nocd, "_", " ");
         local cd = Roids.GetSpellCooldownByName(name);
         if not cd then cd = Roids.GetInventoryCooldownByName(name); end
         if not cd then cd = Roids.GetContainerItemCooldownByName(name) end
