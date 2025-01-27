@@ -72,7 +72,7 @@ function Roids.FindDelimeter(word)
         which = nil;
     end
     
-    return delimeter, which;
+    return { delimiter = delimeter, which = which };
 end
 
 
@@ -120,16 +120,47 @@ function Roids.parseMsg(msg)
         conditionals.checkchanneled = msg;
     end
         
-    local pattern = "(@?%w+:?>?<?%w*[_?%-?%w*]*[/?%w*]*)";
+
+    -- dbfstx:{spellName}<>{stackCount}
+    -- dbflen:{spellName}<>{duration}
+    -- bfstx:{spellName}<>{stackCount}
+    -- bflen:{spellName}<>{duration}
+
+    -- starts with an @ (optional) 
+    -- word characters 1 or more times
+    -- follows : (optional)
+    -- >< (optional)
+    -- word characters 0 or more times
+    -- _- followed by words 0 or more times
+    -- / followed by words 0 or more times
+
+
+    -- dbfstx:SunderArmor<>{stackCount}
+    local pattern = "(@?%w+:?[%w*[_?%-?%w*]*>?<?%w*[_?%-?%w*]*[/?%w*]*)";
     for w in string.gfind(modifier, pattern) do
-        local delimeter, which = Roids.FindDelimeter(w);
+        local primary = Roids.FindDelimeter(w);
         -- x:y
-        if delimeter then
-            local conditional = string.sub(w, 1, delimeter - 1);
-            if which then
-                conditionals[conditional] = { bigger = which, amount = string.sub(w, delimeter + 1) };
+        
+        if primary.delimiter then
+            local conditional = string.sub(w, 1, primary.delimiter - 1);    
+            if primary.which ~= nil then
+                conditionals[conditional] = { bigger = primary.which, amount = string.sub(w, primary.delimiter + 1) };
             else
-                conditionals[conditional] = string.sub(w, delimeter + 1);
+                -- Check for secondary delimiters
+                local options = string.sub(w, primary.delimiter + 1);
+                local secondary = Roids.FindDelimeter(options);
+
+                if secondary.delimiter then
+                    local spell = string.sub(options, 1, secondary.delimiter - 1);
+                    if secondary.which then
+                        conditionals[conditional] = { spell = spell, bigger = secondary.which, amount = string.sub(options, secondary.delimiter + 1) }
+                    else
+                        print("Unknown Conditions: "..options);
+                    end
+                else
+                    conditionals[conditional] = options; -- Original Condition
+                end
+                -- conditionals[conditional] = string.sub(w, delimeter + 1);
             end
         -- @target
         elseif string.sub(w, 1, 1) == "@" then
