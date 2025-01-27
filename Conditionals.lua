@@ -66,6 +66,41 @@ function Roids.GetCurrentShapeshiftIndex()
     return 0;
 end
 
+Roids.SpellMap = {
+    HoF = "Hand of Freedom",
+    BoF = "Blessing of Freedom",
+    BoM = "Blessing of Might",
+    BoW = "Blessing of Wisdom",
+    SoL = "Seal of Light",
+    JoL = "Judgement of Light",
+    SoW = "Seal of Wisdom",
+    JoW = "Judgement of Wisdom",
+    SoJ = "Seal of Justice",
+    JoJ = "Judgement of Justice",
+    SoR = "Seal of Righteousness",
+    CruS = "Crusader Strike",
+    HolyS = "Holy Strike",
+    Judge = "Judgement",
+
+    SerpS = "Serpent Sting",
+    HM = "Hunter's Mark",
+    ConcShot = "Concussive Shot",
+    Multi = "Multi-Shot",
+    TS = "Trueshot",
+
+    BS = "Battle Shout",
+    SA = "Sunder Armor"
+}
+
+function MapSpellName(key) 
+    local buff = Roids.SpellMap[key];
+    if buff ~= nil and buff ~= '' then
+        return buff;
+    else
+        return key
+    end
+end
+
 -- Checks whether or not the given buffName is present on the given unit's buff bar
 -- buffName: The name of the buff
 -- unit: The UnitID of the unit to check
@@ -74,7 +109,8 @@ function Roids.HasBuffName(buffName, unit)
     if not buffName or not unit then
         return false;
     end
-    
+
+    buffName = MapSpellName(buffName);    
     local text = getglobal(RoidsTooltip:GetName().."TextLeft1");
 	for i=1, 32 do
 		RoidsTooltip:SetOwner(UIParent, "ANCHOR_NONE");
@@ -99,6 +135,7 @@ function Roids.HasDeBuffName(buffName, unit)
         return false;
     end
     
+    buffName = MapSpellName(buffName);
     local text = getglobal(RoidsTooltip:GetName().."TextLeft1");
 	for i=1, 16 do
 		RoidsTooltip:SetOwner(UIParent, "ANCHOR_NONE");
@@ -112,6 +149,72 @@ function Roids.HasDeBuffName(buffName, unit)
     end
     
     return false;
+end
+
+function Roids.GetDebuffPosition(buffName, unit)
+    if not buffName or not unit then
+        return false;
+    end
+    
+    buffName = MapSpellName(buffName);
+    local text = getglobal(RoidsTooltip:GetName().."TextLeft1");
+	for i=1, 64 do
+		RoidsTooltip:SetOwner(UIParent, "ANCHOR_NONE");
+		RoidsTooltip:SetUnitDebuff(unit, i);
+		name = text:GetText();
+		RoidsTooltip:Hide();
+        buffName = string.gsub(buffName, "_", " ");
+		if ( name and string.find(name, buffName) ) then
+			return i;
+		end
+    end
+    
+    return nil;
+end
+
+-- name
+-- String - The name of the spell or effect of the debuff, or nil if no debuff was found with the specified name or at the specified index. This is the name shown in yellow when you mouse over the icon.
+-- rank
+-- String - The rank of the spell or effect that caused the debuff. Returns "" if there is no rank.
+-- icon
+-- String - The identifier of (path and filename to) the indicated debuff, or nil if no debuff
+-- count
+-- Number - The number of times the debuff has been applied to the target. Returns 0 for any debuff which doesn't stack. ( Changed in 1.11 ).
+-- debuffType
+-- String - The type of the debuff: Magic, Disease, Poison, Curse, or nothing for those with out a type.
+-- duration
+-- Number - The full duration of the debuff in seconds; nil if the debuff was not cast by the player.
+-- expirationTime
+-- Number - Time at which the debuff expires (GetTime() as a reference frame).
+-- unitCaster
+-- String - unitId reference to the unit that cast the buff/debuff.
+-- isStealable
+-- Boolean - 1 if it is stealable otherwise nil
+-- shouldConsolidate
+-- Boolean - 1 if the buff should be placed in a buff consolidation box (usually long-term effects).
+-- spellId
+-- Number - spell ID of the aura.
+function Roids.CheckDebuffStacks(unit, spell, bigger, amount)
+    if not UnitIsVisible(unit) or not UnitExists(unit) then
+        return false;
+    end
+
+    local position = Roids.GetDebuffPosition(spell, unit);
+    if position then
+        local texture, count, last = UnitDebuff(unit, position);
+        if (count) then
+            if bigger == 0 then
+                return count < tonumber(amount);
+            end
+            return count > tonumber(amount);        
+        end
+    end
+
+    if bigger == 0 then
+        return true;
+    else
+        return false;
+    end
 end
 
 -- Checks whether or not the given textureName is present in the current player's buff bar
@@ -289,6 +392,21 @@ function Roids.ValidateCurrentHp(unit, bigger, amount)
         return health < tonumber(amount);
     end
     return health > tonumber(amount);
+end
+
+
+-- Don't think this actually works yet, not sure you can get pet resources through
+-- the API
+function Roids.ValidatePetPower(bigger, amount)
+    if not UnitIsVisible('pet') or not UnitExists('pet') then
+        return false;
+    end
+
+    local power = UnitMana('pet');
+    if bigger == 0 then
+        return power < tonumber(amount);
+    end
+    return power > tonumber(amount);
 end
 
 -- Checks whether or not the given unit has more or less hp in percent than the given amount
@@ -552,6 +670,10 @@ Roids.Keywords = {
     dbf = function(conditionals)
         return Roids.HasDeBuffName(conditionals.dbf, conditionals.target);
     end,
+
+    dbfstx = function (conditionals)
+        return Roids.CheckDebuffStacks(conditionals.target, conditionals.dbfstx.spell, conditionals.dbfstx.bigger, conditionals.dbfstx.amount)
+    end,
     
     ndbf = function(conditionals)
         return not Roids.HasDeBuffName(conditionals.ndbf, conditionals.target);
@@ -584,7 +706,11 @@ Roids.Keywords = {
     cpw = function(conditionals)
         return Roids.ValidateRawPower(conditionals.target, conditionals.cpw.bigger, conditionals.cpw.amount);
     end,
-    
+
+    ppw = function(conditionals)
+        return Roids.ValidatePetPower(conditionals.ppw.bigger, conditionals.ppw.amount);
+    end,
+
     mycpw = function(conditionals)
         return Roids.ValidateRawPower("player", conditionals.mycpw.bigger, conditionals.mycpw.amount);
     end,
@@ -622,7 +748,8 @@ Roids.Keywords = {
     end,
     
     cd = function(conditionals)
-        local name = string.gsub(conditionals.cd, "_", " ");
+        local spell = MapSpellName(conditionals.nocd);
+        local name = string.gsub(spell, "_", " ");
         local cd = Roids.GetSpellCooldownByName(name);
         if not cd then cd = Roids.GetInventoryCooldownByName(name); end
         if not cd then cd = Roids.GetContainerItemCooldownByName(name) end
@@ -630,7 +757,8 @@ Roids.Keywords = {
     end,
     
     nocd = function(conditionals)
-        local name = string.gsub(conditionals.nocd, "_", " ");
+        local spell = MapSpellName(conditionals.nocd);
+        local name = string.gsub(spell, "_", " ");
         local cd = Roids.GetSpellCooldownByName(name);
         if not cd then cd = Roids.GetInventoryCooldownByName(name); end
         if not cd then cd = Roids.GetContainerItemCooldownByName(name) end
