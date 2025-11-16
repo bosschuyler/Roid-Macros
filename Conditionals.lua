@@ -547,6 +547,14 @@ function Roids.GetContainerItemCooldownByName(itemName)
     return nil;
 end
 
+function Roids.inMelee(unit)
+    return CheckInteractDistance(unit, 3);
+end
+
+function Roids.nearOutOfRange(unit)
+    return CheckInteractDistance(unit, 4);
+end
+
 -- A list of Conditionals and their functions to validate them
 Roids.Keywords = {
     help = function(conditionals)
@@ -565,6 +573,14 @@ Roids.Keywords = {
         return true;
     end,
     
+    inmelee = function(conditionals)
+        return Roids.inMelee(conditionals.target);
+    end,
+
+    nearrange = function(conditionals)
+        return Roids.nearOutOfRange(conditionals.target);
+    end,
+
     stance = function(conditionals)
         local inStance = false;
         for k,v in pairs(Roids.splitString(conditionals.stance, "/")) do
@@ -745,6 +761,14 @@ Roids.Keywords = {
 
     v = function(conditionals)
         return Roids.Visible(conditionals.target)
+    end,
+
+    npetbf = function(conditionals)
+        return not Roids.HasBuffName(conditionals.npetbf, "pet");
+    end,
+
+    petbf = function(conditionals)
+        return Roids.HasBuffName(conditionals.petbf, "pet");
     end,
     
     cd = function(conditionals)
