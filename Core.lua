@@ -12,6 +12,12 @@ Roids.mouseoverUnit = Roids.mouseoverUnit or nil;
 
 Roids.Extensions = Roids.Extensions or {};
 
+function Roids.Debug(text)
+    if Roids.DebugEnabled == true then
+        print(text);
+    end
+end
+
 -- Executes the given Macro's body
 -- body: The Macro's body
 function Roids.ExecuteMacroBody(body)
@@ -155,7 +161,7 @@ function Roids.parseMsg(msg)
                     if secondary.which then
                         conditionals[conditional] = { spell = spell, bigger = secondary.which, amount = string.sub(options, secondary.delimiter + 1) }
                     else
-                        print("Unknown Conditions: "..options);
+                        Roids.Debug("Unknown Conditions: "..options);
                     end
                 else
                     conditionals[conditional] = options; -- Original Condition
@@ -261,6 +267,7 @@ function Roids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAct
     -- No conditionals. Just exit.
     if not conditionals then
         if not msg then
+            Roids.Debug("No Conditionals & No Message" .. msg);
             return false;
         else
             if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
@@ -334,6 +341,7 @@ function Roids.DoWithConditionals(msg, hook, fixEmptyTargetFunc, targetBeforeAct
     if string.sub(msg, 1, 1) == "{" and string.sub(msg, -1) == "}" then
         result = Roids.ExecuteMacroByName(string.sub(msg, 2, -2));
     else
+        Roids.Debug("Performing Action: " .. msg);
         action(msg);
     end
     
@@ -381,12 +389,36 @@ function Roids.DoTarget(msg)
     return handled;
 end
 
+function Roids.PetAttack(msg)
+    PetDefensiveMode();
+    PetAttack();
+    return true;
+end
+
 -- Attempts to attack a unit by a set of conditionals
 -- msg: The raw message intercepted from a /petattack command
 function Roids.DoPetAttack(msg)
+    Roids.Debug('Pet Attack Message:' .. msg);
     local handled = false;
     for k, v in pairs(Roids.splitString(msg, ";%s*")) do
-        if Roids.DoWithConditionals(v, nil, Roids.FixEmptyTarget, true, PetAttack) then
+        if Roids.DoWithConditionals(v, nil, Roids.FixEmptyTarget, true, Roids.PetAttack) then
+            handled = true;
+            break;
+        end
+    end
+    Roids.Debug('Pet Attack Handled' .. (handled and 'Handled' or 'Unhandled'));
+    return handled;
+end
+
+function Roids.PetReturn(msg)
+    PetFollow(); PetPassiveMode(); ClearTarget();
+    return true;
+end
+
+function Roids.DoPetReturn(msg)
+    local handled = false;
+    for k, v in pairs(Roids.splitString(msg, ";%s*")) do
+        if Roids.DoWithConditionals(v, nil, Roids.FixEmptyTarget, true, Roids.PetReturn) then
             handled = true;
             break;
         end

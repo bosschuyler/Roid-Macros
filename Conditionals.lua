@@ -240,6 +240,11 @@ Roids.WeaponTypeNames = {
     Staffs =  { slot = "MainHandSlot", name = Roids.Localized.Staff },
     Maces =  { slot = "MainHandSlot", name = Roids.Localized.Mace },
     Polearms =  { slot = "MainHandSlot", name = Roids.Localized.Polearm },
+    Dagger = { slot = "SecondaryHandSlot", name = Roids.Localized.Dagger },
+    Fist =  { slot = "SecondaryHandSlot", name = Roids.Localized.FistWeapon },
+    Axe =  { slot = "SecondaryHandSlot", name = Roids.Localized.Axe },
+    Sword =  { slot = "SecondaryHandSlot", name = Roids.Localized.Sword },
+    Mace =  { slot = "SecondaryHandSlot", name = Roids.Localized.Mace },
     Shields = { slot = "SecondaryHandSlot", name = Roids.Localized.Shield },
     Guns = { slot = "RangedSlot", name = Roids.Localized.Gun },
     Crossbows = { slot = "RangedSlot", name = Roids.Localized.Crossbow },
@@ -555,6 +560,10 @@ function Roids.nearOutOfRange(unit)
     return CheckInteractDistance(unit, 4);
 end
 
+function Roids.hasPet()
+    return UnitExists("pet") and UnitIsVisible("pet") and not UnitIsDeadOrGhost("pet")
+end
+
 -- A list of Conditionals and their functions to validate them
 Roids.Keywords = {
     help = function(conditionals)
@@ -575,6 +584,10 @@ Roids.Keywords = {
     
     inmelee = function(conditionals)
         return Roids.inMelee(conditionals.target);
+    end,
+
+    inrange = function(conditionals)
+        return not Roids.inMelee(conditionals.target);
     end,
 
     nearrange = function(conditionals)
@@ -640,11 +653,16 @@ Roids.Keywords = {
     end,
     
     noequipped = function(conditionals)
-        return not Roids.HasWeaponEquipped(conditionals.equipped);
+        return not Roids.HasWeaponEquipped(conditionals.noequipped);
     end,
 
-    worn = equipped,
-    noworn = noequipped,
+    worn = function(conditionals)
+        return Roids.HasWeaponEquipped(conditionals.worn);
+    end,
+
+    noworn = function(conditionals)
+        return not Roids.HasWeaponEquipped(conditionals.noworn);
+    end,
     
     dead = function(conditionals)
         return UnitIsDeadOrGhost(conditionals.target);
@@ -757,6 +775,26 @@ Roids.Keywords = {
     
     t = function(conditionals)
         return Roids.ValidateCreatureType(conditionals.t, conditionals.target);
+    end,
+
+    tme = function (conditionals)
+        return UnitIsUnit("targettarget", "player")
+    end,
+
+    ntme = function (conditionals)
+        return not UnitIsUnit("targettarget", "player");
+    end,
+
+    ptpet = function (conditionals)
+        return UnitIsUnit("pettargettarget", "pet")
+    end,
+
+    nptpet = function (conditionals)
+        return not UnitIsUnit("pettargettarget", "pet")
+    end,
+
+    haspet = function (conditionals)
+        return Roids.hasPet();
     end,
 
     v = function(conditionals)

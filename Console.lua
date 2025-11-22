@@ -5,6 +5,14 @@
 local _G = _G or getfenv(0)
 local Roids = _G.Roids or {}
 
+SLASH_PETRETURN1 = "/petreturn";
+
+SlashCmdList.PETRETURN = function(msg) Roids.DoPetReturn(msg); end
+
+SLASH_ROIDDEBUG1 = '/roiddebug';
+
+SlashCmdList.ROIDDEBUG = function() if Roids.DebugEnabled then Roids.DebugEnabled = false; else Roids.DebugEnabled = true; end end
+
 SLASH_PETATTACK1 = "/petattack";
 
 SlashCmdList.PETATTACK = function(msg) Roids.DoPetAttack(msg); end
